@@ -73,21 +73,36 @@ void AUniversalSwatchSlotsSubsystem::AddNewSwatchesColorSlotsToGameState(TArray<
 				NewColourSlot.PrimaryColor = Swatch->PrimaryColour;
 				NewColourSlot.SecondaryColor = Swatch->SecondaryColour;
 
-				// Update the subsystem and game state 
-				FGGameState->mBuildingColorSlots_Data[ColourIndex] = NewColourSlot;
-				ModifiedSlots.Add(ColourIndex);
+				// Only mark the slot as modified if its color actually changed.
+				// This prevents flooding the reliable RPC buffer when the subsystem runs
+				// on client join and all slots already have the correct colors.
+				if (FGGameState->mBuildingColorSlots_Data.IsValidIndex(ColourIndex))
+				{
+					const FFactoryCustomizationColorSlot& ExistingSlot = FGGameState->mBuildingColorSlots_Data[ColourIndex];
+					if (ExistingSlot.PrimaryColor != NewColourSlot.PrimaryColor
+						|| ExistingSlot.SecondaryColor != NewColourSlot.SecondaryColor
+						|| ExistingSlot.PaintFinish != NewColourSlot.PaintFinish)
+					{
+						FGGameState->mBuildingColorSlots_Data[ColourIndex] = NewColourSlot;
+						ModifiedSlots.Add(ColourIndex);
+					}
+				}
 			}
 		}
 
-		TArray<FFactoryCustomizationColorSlot> ColorSlots = FGGameState->mBuildingColorSlots_Data;
-		FGGameState->SetupColorSlots_Data(ColorSlots);
-
-		// Only notify for the slots that were actually modified.
-		// Calling Server_SetBuildingColorDataForSlot for every slot in the array floods the
-		// reliable RPC buffer, which causes "outgoing reliable buffer overflow" when clients join.
-		for (int32 SlotIndex : ModifiedSlots)
+		if (ModifiedSlots.Num() > 0)
 		{
-			FGGameState->Server_SetBuildingColorDataForSlot(SlotIndex, ColorSlots[SlotIndex]);
+			TArray<FFactoryCustomizationColorSlot> ColorSlots = FGGameState->mBuildingColorSlots_Data;
+			FGGameState->SetupColorSlots_Data(ColorSlots);
+
+			// Only notify for slots whose color actually changed.
+			// Without this guard every slot in the palette (up to 148 in the default palette) would
+			// trigger a reliable RPC on every call — including on client join when the subsystem
+			// re-runs — causing an "outgoing reliable buffer overflow".
+			for (int32 SlotIndex : ModifiedSlots)
+			{
+				FGGameState->Server_SetBuildingColorDataForSlot(SlotIndex, ColorSlots[SlotIndex]);
+			}
 		}
 
 		return;
