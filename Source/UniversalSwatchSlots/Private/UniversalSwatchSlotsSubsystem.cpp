@@ -43,6 +43,7 @@ void AUniversalSwatchSlotsSubsystem::AddNewSwatchesColorSlotsToGameState(TArray<
 
 	if (FGGameState)
 	{
+		TArray<int32> ModifiedSlots;
 
 		for (UUSSSwatchDesc* Swatch : SwatchDescriptions)
 		{	// Browse all the swatch descriptions
@@ -74,17 +75,19 @@ void AUniversalSwatchSlotsSubsystem::AddNewSwatchesColorSlotsToGameState(TArray<
 
 				// Update the subsystem and game state 
 				FGGameState->mBuildingColorSlots_Data[ColourIndex] = NewColourSlot;
+				ModifiedSlots.Add(ColourIndex);
 			}
 		}
 
 		TArray<FFactoryCustomizationColorSlot> ColorSlots = FGGameState->mBuildingColorSlots_Data;
 		FGGameState->SetupColorSlots_Data(ColorSlots);
 
-		for (int32 i = 0; i < ColorSlots.Num(); i++)
-		{	// Update buildings
-
-			FFactoryCustomizationColorSlot ColorSlot = ColorSlots[i];
-			FGGameState->Server_SetBuildingColorDataForSlot(i, ColorSlot);
+		// Only notify for the slots that were actually modified.
+		// Calling Server_SetBuildingColorDataForSlot for every slot in the array floods the
+		// reliable RPC buffer, which causes "outgoing reliable buffer overflow" when clients join.
+		for (int32 SlotIndex : ModifiedSlots)
+		{
+			FGGameState->Server_SetBuildingColorDataForSlot(SlotIndex, ColorSlots[SlotIndex]);
 		}
 
 		return;
