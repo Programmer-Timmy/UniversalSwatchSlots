@@ -304,10 +304,9 @@ bool AUniversalSwatchSlotsSubsystem::GenerateNewSwatchUsingInfo(UUSSSwatchGroup*
 {
 	int32 slotID = this->ValidSlotIDs[0];
 
-	// Avoid generating customization *recipes* for swatches (see GI module note).
-	if (this->SwatchDescriptorArray.Contains(slotID))
-	{	// We can't overwrite existing swatch. (Well we could but I don't want to in order to not mess up evrything)
-
+	// We can't overwrite existing swatch. (Well we could but I don't want to in order to not mess up evrything)
+	if (this->SwatchDescriptorArray.Contains(slotID) || this->SwatchRecipeArray.Contains(slotID))
+	{
 		return false;
 	}
 
@@ -343,9 +342,13 @@ bool AUniversalSwatchSlotsSubsystem::GenerateNewSwatchUsingInfo(UUSSSwatchGroup*
 		this->InternalSwatchMatch.Add(slotID, slotID);
 	}
 
-	this->GenerateDynamicSwatchDescriptor(slotID, genName, SwatchGroup, SwatchInfo);
+	UUSSSwatchDesc* SwatchDescriptor = this->GenerateDynamicSwatchDescriptor(slotID, genName, SwatchGroup, SwatchInfo);
 
 	this->ValidSlotIDs.RemoveAt(0);
+
+	// Generate a customization recipe only for swatches that actually exist (i.e. palette-defined),
+	// so they show up in the customizer, without generating hundreds at startup.
+	this->GenerateDynamicSwatchRecipe(slotID, SwatchDescriptor);
 
 	return true;
 }
