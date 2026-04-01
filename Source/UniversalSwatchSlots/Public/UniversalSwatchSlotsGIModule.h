@@ -54,7 +54,7 @@ class UNIVERSALSWATCHSLOTS_API UUniversalSwatchSlotsGIModule : public UGameInsta
 	/**
 	 * Create a new swatch using the desired group ID and swatch name.
 	 *
-	 * Note: This function will create a new swatch group if the given group ID doensn't exist in the SwatchGroupArray and call GenerateDynamicSwatchGroup -> GenerateDynamicSwatchDescriptor -> GenerateDynamicSwatchRecipe functions. This function does nothing if the swatch descriptor / recipe already exist.
+	 * Note: This function will create a new swatch group if the given group ID doensn't exist in the SwatchGroupArray and call GenerateDynamicSwatchGroup -> GenerateDynamicSwatchDescriptor functions. This function does nothing if the swatch descriptor already exist.
 	 *
 	 * @param	UniqueGroupID				The swatch group ID to use. If the group doesn't exist it will be created.
 	 * @param	GroupDisplayName			The name to give to the swatch group. If the group already exist its name will be changed.

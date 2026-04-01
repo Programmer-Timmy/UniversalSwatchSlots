@@ -40,54 +40,62 @@ AUniversalSwatchSlotsSubsystem* AUniversalSwatchSlotsSubsystem::Get(UObject* Wor
 void AUniversalSwatchSlotsSubsystem::AddNewSwatchesColorSlotsToGameState(TArray<UUSSSwatchDesc*> SwatchDescriptions)
 {
 	AFGGameState* FGGameState = Cast<AFGGameState>(UGameplayStatics::GetGameState(this));
-
-	if (FGGameState)
+	if (!FGGameState)
 	{
+		return;
+	}
 
-		for (UUSSSwatchDesc* Swatch : SwatchDescriptions)
-		{	// Browse all the swatch descriptions
+	// Slot data is replicated from the server via AFGGameState.
+	// Calling Server_SetBuildingColorDataForSlot in a loop (Reliable RPC) can easily overflow the reliable buffer during join.
+	if (!HasAuthority())
+	{
+		UE_LOG(LogUSS_Subsystem, Verbose, TEXT("AddNewSwatchesColorSlotsToGameState called on client; skipping."));
+		return;
+	}
 
-			if (Swatch)
+	bool bAnyChanged = false;
+
+	for (UUSSSwatchDesc* Swatch : SwatchDescriptions)
+	{	// Browse all the swatch descriptions
+		if (!Swatch)
+		{
+			continue;
+		}
+
+		const int32 ColourIndex = Swatch->ID;
+
+		FFactoryCustomizationColorSlot NewColourSlot = FFactoryCustomizationColorSlot(FLinearColor::Black, FLinearColor::Black);
+		NewColourSlot.PaintFinish = this->PaintFinishes[(uint8)Swatch->Material];
+
+		if (FGGameState->mBuildingColorSlots_Data.Num() <= ColourIndex)
+		{	// Ensure the slot array is large enough
+			for (int32 i = FGGameState->mBuildingColorSlots_Data.Num(); i <= ColourIndex; ++i)
 			{
-				int32 ColourIndex = Swatch->ID;
-
-				FFactoryCustomizationColorSlot NewColourSlot = FFactoryCustomizationColorSlot(FLinearColor::Black, FLinearColor::Black);
-				NewColourSlot.PaintFinish = this->PaintFinishes[(uint8)Swatch->Material];
-
-				if (FGGameState->mBuildingColorSlots_Data.Num() <= ColourIndex)
-				{	// We need to create some default swatch slots
-
-					for (int32 i = FGGameState->mBuildingColorSlots_Data.Num(); i <= ColourIndex; ++i)
-					{
-						if (!FGGameState->mBuildingColorSlots_Data.IsValidIndex(i))
-						{	// We need to add a new slot
-
-							FGGameState->mBuildingColorSlots_Data.Add(NewColourSlot);
-							UE_LOG(LogUSS_Subsystem, Verbose, TEXT("New color slot added to gamestate: %d"), i);
-						}
-					}
-				}
-
-				// Changes the colour to the desired one
-				NewColourSlot.PrimaryColor = Swatch->PrimaryColour;
-				NewColourSlot.SecondaryColor = Swatch->SecondaryColour;
-
-				// Update the subsystem and game state 
-				FGGameState->mBuildingColorSlots_Data[ColourIndex] = NewColourSlot;
+				FGGameState->mBuildingColorSlots_Data.Add(NewColourSlot);
+				UE_LOG(LogUSS_Subsystem, Verbose, TEXT("New color slot added to gamestate: %d"), i);
+				bAnyChanged = true;
 			}
 		}
 
-		TArray<FFactoryCustomizationColorSlot> ColorSlots = FGGameState->mBuildingColorSlots_Data;
-		FGGameState->SetupColorSlots_Data(ColorSlots);
+		// Apply desired colors
+		NewColourSlot.PrimaryColor = Swatch->PrimaryColour;
+		NewColourSlot.SecondaryColor = Swatch->SecondaryColour;
 
-		for (int32 i = 0; i < ColorSlots.Num(); i++)
-		{	// Update buildings
-
-			FFactoryCustomizationColorSlot ColorSlot = ColorSlots[i];
-			FGGameState->Server_SetBuildingColorDataForSlot(i, ColorSlot);
+		if (FGGameState->mBuildingColorSlots_Data.IsValidIndex(ColourIndex))
+		{
+			const FFactoryCustomizationColorSlot& Existing = FGGameState->mBuildingColorSlots_Data[ColourIndex];
+			if (Existing.PrimaryColor != NewColourSlot.PrimaryColor || Existing.SecondaryColor != NewColourSlot.SecondaryColor || Existing.PaintFinish != NewColourSlot.PaintFinish)
+			{
+				FGGameState->mBuildingColorSlots_Data[ColourIndex] = NewColourSlot;
+				bAnyChanged = true;
+			}
 		}
+	}
 
-		return;
+	if (bAnyChanged)
+	{
+		// Let GameState apply / refresh any internal state using the current slots.
+		FGGameState->SetupColorSlots_Data(FGGameState->mBuildingColorSlots_Data);
 	}
 }
 
@@ -296,7 +304,8 @@ bool AUniversalSwatchSlotsSubsystem::GenerateNewSwatchUsingInfo(UUSSSwatchGroup*
 {
 	int32 slotID = this->ValidSlotIDs[0];
 
-	if (this->SwatchDescriptorArray.Contains(slotID) || this->SwatchRecipeArray.Contains(slotID))
+	// Avoid generating customization *recipes* for swatches (see GI module note).
+	if (this->SwatchDescriptorArray.Contains(slotID))
 	{	// We can't overwrite existing swatch. (Well we could but I don't want to in order to not mess up evrything)
 
 		return false;
@@ -334,11 +343,9 @@ bool AUniversalSwatchSlotsSubsystem::GenerateNewSwatchUsingInfo(UUSSSwatchGroup*
 		this->InternalSwatchMatch.Add(slotID, slotID);
 	}
 
-	UUSSSwatchDesc* SwatchDescriptor = this->GenerateDynamicSwatchDescriptor(slotID, genName, SwatchGroup, SwatchInfo);
+	this->GenerateDynamicSwatchDescriptor(slotID, genName, SwatchGroup, SwatchInfo);
 
 	this->ValidSlotIDs.RemoveAt(0);
-
-	UUSSSwatchRecipe* SwatchRecipe = this->GenerateDynamicSwatchRecipe(slotID, SwatchDescriptor);
 
 	return true;
 }
