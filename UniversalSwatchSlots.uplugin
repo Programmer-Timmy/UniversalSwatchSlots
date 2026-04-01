@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.2.0",
+	"VersionName": "1.2.1",
 	"FriendlyName": "Universal Swatch Slots",
 	"Description": "A mod that adds new swatches (one for each craftable item in the game) splitted into categories. These swatches comes with default colors depending on the item it corresponds to. You can create your own palette of swatches or modify existing ones in the mod configuration or directly by editing the JSON config file. It also means that you can easly share your palettes between different save game or even with others.",
 	"Category": "Modding",
@@ -25,10 +25,10 @@
 		{
 			"Name": "SML",
 			"Enabled": true,
-			"SemVersion": "^3.11.1"
+			"SemVersion": "^3.11.3"
 		}
 	],
-	"SemVersion": "1.2.0",
+	"SemVersion": "1.2.1",
 	"GameVersion": ">=416835",
 	"LocalizationTargets": [
 		{
