@@ -50,8 +50,7 @@ public:
 	/**
 	 * Create a new swatch using the desired group ID and swatch name.
 	 *
-	 * Note: This function will create a new swatch group if the given group ID doensn't exist in the SwatchGroupArray and call GenerateDynamicSwatchGroup -> GenerateDynamicSwatchDescriptor -> GenerateDynamicSwatchRecipe.
-	 * Recipes are only generated for palette-defined swatches (not for every possible slot at startup) to avoid replication bloat.
+	 * Note: This function will create a new swatch group if the given group ID doensn't exist in the SwatchGroupArray and call GenerateDynamicSwatchGroup -> GenerateDynamicSwatchDescriptor -> GenerateDynamicSwatchRecipe functions. This function does nothing if the swatch descriptor / recipe already exist.
 	 *
 	 * @param	SwatchInformation			The swatch information to use.
 	 * @param	SwatchGroup					The used swatch group. NULL if the function was aborted.
