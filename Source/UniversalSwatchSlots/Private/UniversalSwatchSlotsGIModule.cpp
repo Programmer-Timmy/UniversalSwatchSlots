@@ -45,14 +45,7 @@ void UUniversalSwatchSlotsGIModule::GenerateDynamicSwatchClasses()
 	for (int32 i = startID; i < maxSlots; i++)
 	{
 		this->GenerateDynamicSwatchDescriptor(i);
-		// Do NOT eagerly generate 200+ customization recipe classes.
-		// Those UFGCustomizationRecipe subclasses can end up in AFGRecipeManager::mAvailableCustomizationRecipes
-		// (SaveGame + Replicated) and cause ReliableBufferOverflow during join/load.
-		//
-		// Swatch *descriptors* are what buildings reference in FFactoryCustomizationData.SwatchDesc.
-		// Keeping descriptors ensures saves load, while skipping recipe generation prevents recipe-manager replication bloat.
-		//
-		// If recipes are needed for UI, generate them lazily only for used swatches.
+		// Skip recipe generation to prevent ReliableBufferOverflow replication bloat; descriptors alone are sufficient for save compatibility.
 	}
 }
 
