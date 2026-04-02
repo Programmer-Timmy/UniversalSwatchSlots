@@ -346,8 +346,6 @@ bool AUniversalSwatchSlotsSubsystem::GenerateNewSwatchUsingInfo(UUSSSwatchGroup*
 
 	this->ValidSlotIDs.RemoveAt(0);
 
-	// Generate a customization recipe only for swatches that actually exist (i.e. palette-defined),
-	// so they show up in the customizer, without generating hundreds at startup.
 	this->GenerateDynamicSwatchRecipe(slotID, SwatchDescriptor);
 
 	return true;
